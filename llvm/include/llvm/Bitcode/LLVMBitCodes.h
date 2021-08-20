@@ -439,6 +439,7 @@ enum ConstantsCodes {
   CST_CODE_PTRAUTH = 33,              // [ptr, key, disc, addrdisc]
   CST_CODE_PTRAUTH2 = 34,             // [ptr, key, disc, addrdisc,
                                       //  deactivation_symbol]
+  CST_CODE_UNKNOWN_PROVENANCE = 35,   // UNKNOWN_PROVENANCE
 };
 
 /// CastOpcodes - These are values used in the bitcode files to encode which
