@@ -62,6 +62,26 @@ define i32 @test2a(ptr%P, i1 %b) {
   ret i32 %Diff
 }
 
+; CHECK-LABEL: @test2b(
+define i32 @test2b(ptr %P, i1 %b) {
+  %V1 = load i32, ptr %P
+  call ptr @llvm.noalias.p0.p0.p0.i32(ptr undef, ptr null, ptr null, i32 0, metadata !1)
+  %V2 = load i32, ptr %P
+  %Diff = sub i32 %V1, %V2
+  ret i32 %Diff
+  ; CHECK: ret i32 0
+}
+
+; CHECK-LABEL: @test2c(
+define i32 @test2c(ptr %P, i1 %b) {
+  %V1 = load i32, ptr %P
+  call ptr @llvm.provenance.noalias.p0.p0.p0.p0.i32(ptr undef, ptr null, ptr null, ptr null, i32 0, metadata !1)
+  %V2 = load i32, ptr %P
+  %Diff = sub i32 %V1, %V2
+  ret i32 %Diff
+  ; CHECK: ret i32 0
+}
+
 ;; Cross block load value numbering.
 define i32 @test3(ptr%P, i1 %Cond) {
 ; CHECK-LABEL: @test3(
@@ -192,6 +212,24 @@ define i32 @test6a(ptr%P, i1 %b) {
   tail call void @llvm.assume(i1 %b)
   %V1 = load i32, ptr %P
   ret i32 %V1
+}
+
+; CHECK-LABEL: @test6b(
+define i32 @test6b(ptr %P, i1 %b) {
+  store i32 42, ptr %P
+  call ptr @llvm.noalias.p0.p0.p0.i32(ptr undef, ptr null, ptr null, i32 0, metadata !3)
+  %V1 = load i32, ptr %P
+  ret i32 %V1
+  ; CHECK: ret i32 42
+}
+
+; CHECK-LABEL: @test6c(
+define i32 @test6c(ptr %P, i1 %b) {
+  store i32 42, ptr %P
+  call ptr @llvm.provenance.noalias.p0.p0.p0.p0.i32(ptr undef, ptr null, ptr null, ptr null, i32 0, metadata !3)
+  %V1 = load i32, ptr %P
+  ret i32 %V1
+  ; CHECK: ret i32 42
 }
 
 ;; Trivial dead store elimination.
@@ -408,3 +446,9 @@ entry:
   %and = and i1 %b, %c
   ret i1 %and
 }
+
+declare ptr @llvm.noalias.p0.p0.p0.i32(ptr, ptr, ptr, i32, metadata) nounwind
+declare ptr @llvm.provenance.noalias.p0.p0.p0.p0.i32(ptr, ptr, ptr, ptr, i32, metadata) nounwind
+
+!2 = !{!2, !"some domain"}
+!3 = !{!3, !2, !"some scope"}
