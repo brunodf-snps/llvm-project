@@ -42,6 +42,7 @@
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicsAArch64.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Operator.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/Statepoint.h"
@@ -7113,7 +7114,6 @@ Value *llvm::simplifyBinaryIntrinsic(Intrinsic::ID IID, Type *ReturnType,
 
     break;
   }
-
   case Intrinsic::aarch64_sve_andv:
   case Intrinsic::aarch64_sve_eorv:
   case Intrinsic::aarch64_sve_orv:
@@ -7124,10 +7124,41 @@ Value *llvm::simplifyBinaryIntrinsic(Intrinsic::ID IID, Type *ReturnType,
   case Intrinsic::aarch64_sve_umaxv:
   case Intrinsic::aarch64_sve_uminv:
     return simplifySVEIntReduction(IID, ReturnType, Op0, Op1);
+  case Intrinsic::experimental_ptr_provenance: {
+    // Only follow the plain path if undefined. Do not propagate null, that
+    // would incorrectly omit noalias information.
+    if (isa<UndefValue>(Op0))
+      return Op0;
+    break;
+  }
+
   default:
     break;
   }
 
+  return nullptr;
+}
+
+static Value *simplifyProvenanceNoAlias(const Value *V) {
+  const IntrinsicInst *II = cast<IntrinsicInst>(V);
+  assert(II->getIntrinsicID() == Intrinsic::provenance_noalias);
+
+  // Only follow the plain path if undefined. Do not propagate null, that
+  // would incorrectly omit noalias information.
+  Value *Op0 = II->getOperand(0);
+  if (isa<UndefValue>(Op0)) {
+    return Op0;
+  }
+
+  // Check for compatibility: provenance.noalias(provenance.noalias) ->
+  // provenance.noalias
+  if (auto *DepII = dyn_cast<IntrinsicInst>(Op0)) {
+    if (DepII->getIntrinsicID() == Intrinsic::provenance_noalias) {
+      if (llvm::areProvenanceNoAliasCompatible(DepII, II)) {
+        return DepII;
+      }
+    }
+  }
   return nullptr;
 }
 
@@ -7336,6 +7367,18 @@ static Value *simplifyIntrinsic(CallBase *Call, Value *Callee,
     if (isSplatValue(Vec))
       return Vec;
     return nullptr;
+  }
+  case Intrinsic::noalias:
+  case Intrinsic::noalias_copy_guard: {
+    // Only follow the plain path if undefined. Do not propagate null, that
+    // would incorrectly omit noalias information.
+    if (auto *Op0 = dyn_cast<UndefValue>(Call->getArgOperand(0))) {
+      return Op0;
+    }
+    return nullptr;
+  }
+  case Intrinsic::provenance_noalias: {
+    return simplifyProvenanceNoAlias(Call);
   }
   default:
     return nullptr;
