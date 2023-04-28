@@ -480,12 +480,91 @@ Instruction *IRBuilderBase::CreateNoAliasScopeDeclaration(Value *Scope) {
 }
 
 Instruction *IRBuilderBase::CreatePtrProvenance(Value *PtrValue,
-                                                Value *PtrProvenance) {
+                                                Value *PtrProvenance,
+                                                const Twine &Name) {
   assert(PtrValue->getType() == PtrProvenance->getType() &&
          "pointer and provenance must have the same type");
   return CreateIntrinsic(Intrinsic::experimental_ptr_provenance,
                          {PtrValue->getType(), PtrValue->getType()},
-                         {PtrValue, PtrProvenance});
+                         {PtrValue, PtrProvenance}, {}, Name);
+}
+
+Instruction *IRBuilderBase::CreateNoAliasDeclaration(Value *AllocaPtr,
+                                                     Value *ObjId,
+                                                     Value *Scope) {
+  assert(AllocaPtr);
+
+  // FIXME: address spaces ?
+  Type *Types[] = {PointerType::get(getContext(), 0), AllocaPtr->getType(),
+                   ObjId->getType()};
+  Value *Ops[] = {AllocaPtr, ObjId, Scope};
+
+  return CreateIntrinsic(Intrinsic::noalias_decl, Types, Ops);
+}
+
+Instruction *IRBuilderBase::CreateNoAliasPointer(Value *Ptr, Value *NoAliasDecl,
+                                                 Value *AddrP, Value *ScopeTag,
+                                                 const Twine &Name,
+                                                 uint64_t ObjectId) {
+  assert(Ptr && AddrP);
+  Value *I64_0 =
+      ConstantInt::get(IntegerType::getInt64Ty(getContext()), ObjectId);
+  return CreateGenericNoAliasIntrinsic(Intrinsic::noalias, Ptr,
+                                       {NoAliasDecl, AddrP, I64_0}, {},
+                                       {ScopeTag}, Name);
+}
+
+Instruction *IRBuilderBase::CreateProvenanceNoAliasPlain(
+    Value *Ptr, Value *NoAliasDecl, Value *AddrP, Value *AddrP_Provenance,
+    Value *ObjId, MDNode *ScopeTag, const Twine &Name) {
+  assert(Ptr && AddrP && AddrP_Provenance);
+  return CreateGenericNoAliasIntrinsic(
+      Intrinsic::provenance_noalias, Ptr,
+      {NoAliasDecl, AddrP, AddrP_Provenance, ObjId}, {ScopeTag}, {}, Name);
+}
+
+Instruction *IRBuilderBase::CreateProvenanceNoAliasPlain(
+    Value *Ptr, Value *NoAliasDecl, Value *AddrP, Value *AddrP_Provenance,
+    Value *ObjId, Value *ScopeValue, const Twine &Name) {
+  assert(Ptr && AddrP && AddrP_Provenance);
+  return CreateGenericNoAliasIntrinsic(
+      Intrinsic::provenance_noalias, Ptr,
+      {NoAliasDecl, AddrP, AddrP_Provenance, ObjId}, {}, {ScopeValue}, Name);
+}
+
+Value *IRBuilderBase::CreateNoAliasCopyGuard(Value *BasePtr, Value *NoAliasDecl,
+                                             MDNode *Offsets, MDNode *ScopeTag,
+                                             const Twine &Name) {
+  if (!Offsets)
+    return BasePtr;
+
+  assert(ScopeTag && "No scope metadata ?");
+  return CreateGenericNoAliasIntrinsic(Intrinsic::noalias_copy_guard, BasePtr,
+                                       {NoAliasDecl}, {Offsets, ScopeTag}, {},
+                                       Name);
+}
+
+Instruction *IRBuilderBase::CreateGenericNoAliasIntrinsic(
+    Intrinsic::ID ID, Value *Ptr, ArrayRef<Value *> args_opt,
+    ArrayRef<MDNode *> MDNodes, ArrayRef<Value *> MDValues, const Twine &Name) {
+  // FIXME: We can currently mangle just about everything.
+  // FIXME: as far as I see in 'getMangledTypeStr', this should be ok now.
+  SmallVector<Type *, 7> Types = {Ptr->getType()};
+  SmallVector<Value *, 7> Ops = {Ptr};
+  for (auto *A : args_opt) {
+    Types.push_back(A->getType());
+    Ops.push_back(A);
+  }
+  // For the metadata info, types must not be added:
+  for (auto *MD : MDNodes) {
+    Ops.push_back(MetadataAsValue::get(Context, MD));
+  }
+  Ops.insert(Ops.end(), MDValues.begin(), MDValues.end());
+
+  Instruction *Ret = CreateIntrinsic(ID, Types, Ops, {}, Name);
+  assert(Ret->getType() == Ptr->getType());
+
+  return Ret;
 }
 
 /// Create a call to a Masked Load intrinsic.
