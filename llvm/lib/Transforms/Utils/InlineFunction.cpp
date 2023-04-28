@@ -1326,7 +1326,7 @@ static void AddNoAliasIntrinsics(CallBase &CB, ValueToValueMapTy &VMap,
 
     // The alloca was optimized away -> use a nullptr
     auto *IdentifyPAlloca =
-        ConstantPointerNull::get(MappedA->getType()->getPointerTo());
+        ConstantPointerNull::get(PointerType::getUnqual(CalledFunc->getContext()));
     auto *NoAliasDecl =
         IRBuilder<>(&CB).CreateNoAliasDeclaration(IdentifyPAlloca, AScopeList);
     Value *NA = IRBuilder<>(&CB).CreateNoAliasPointer(
