@@ -38,6 +38,7 @@ void llvm::initializeScalarOpts(PassRegistry &Registry) {
   initializeNaryReassociateLegacyPassPass(Registry);
   initializePartiallyInlineLibCallsLegacyPassPass(Registry);
   initializeDSELegacyPassPass(Registry);
+  initializePropagateAndConvertNoAliasLegacyPassPass(Registry);
   initializeReassociateLegacyPassPass(Registry);
   initializeScalarizeMaskedMemIntrinLegacyPassPass(Registry);
   initializeSROALegacyPassPass(Registry);
