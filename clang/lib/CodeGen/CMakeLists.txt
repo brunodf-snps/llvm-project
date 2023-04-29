@@ -102,6 +102,7 @@ add_clang_library(clangCodeGen
   CodeGenAction.cpp
   CodeGenFunction.cpp
   CodeGenModule.cpp
+  CodeGenNoAliasOffsets.cpp
   CodeGenPGO.cpp
   CodeGenSYCL.cpp
   CodeGenTBAA.cpp
