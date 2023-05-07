@@ -1405,6 +1405,9 @@ static Instruction *cloneInstructionInExitBlock(
     New = I.clone();
   }
 
+  //@ FIXME: The other metadata should already be cloned ?
+  New->setAAMetadataPtrProvenance(I.getAAMetadata());
+
   New->insertInto(&ExitBlock, ExitBlock.getFirstInsertionPt());
   if (!I.getName().empty())
     New->setName(I.getName() + ".le");
@@ -1668,6 +1671,7 @@ static bool sink(Instruction &I, LoopInfo *LI, DominatorTree *DT,
     // The PHI must be trivially replaceable.
     Instruction *New = sinkThroughTriviallyReplaceablePHI(
         PN, &I, LI, SunkCopies, SafetyInfo, CurLoop, MSSAU);
+    // FIXME: Full Restrict: should we propagate PtrProvenance information from the original I instruction ?
     // As we sink the instruction out of the BB, drop its debug location.
     New->dropLocation();
     PN->replaceAllUsesWith(New);
@@ -1837,6 +1841,8 @@ public:
 
       if (AATags)
         NewSI->setAAMetadata(AATags);
+      // Note: ptr_provenance propagation is not done here. A dependend
+      // provenance should be migrated first !
 
       MemoryAccess *MSSAInsertPoint = MSSAInsertPts[i];
       MemoryAccess *NewMemAcc;
@@ -2025,6 +2031,8 @@ bool llvm::promoteLoopAccessesToScalars(
       // If there is an non-load/store instruction in the loop, we can't promote
       // it.
       if (LoadInst *Load = dyn_cast<LoadInst>(UI)) {
+        if (U.getOperandNo() == LoadInst::getPtrProvenanceOperandIndex())
+          continue;
         if (!Load->isUnordered())
           return false;
 
@@ -2050,6 +2058,9 @@ bool llvm::promoteLoopAccessesToScalars(
             Alignment = std::max(Alignment, InstAlignment);
           }
       } else if (const StoreInst *Store = dyn_cast<StoreInst>(UI)) {
+        if (U.getOperandNo() == StoreInst::getPtrProvenanceOperandIndex())
+          continue;
+
         // Stores *of* the pointer are not interesting, only stores *to* the
         // pointer.
         if (U.getOperandNo() != StoreInst::getPointerOperandIndex())
@@ -2197,8 +2208,11 @@ bool llvm::promoteLoopAccessesToScalars(
       PreheaderLoad->setOrdering(AtomicOrdering::Unordered);
     PreheaderLoad->setAlignment(Alignment);
     PreheaderLoad->setDebugLoc(DebugLoc::getDropped());
-    if (AATags && LoadIsGuaranteedToExecute)
+    if (AATags && LoadIsGuaranteedToExecute) {
       PreheaderLoad->setAAMetadata(AATags);
+      // Note: ptr_provenance propagation is not done here. A dependend provenance
+      // should be migrated first !
+    }
 
     MemoryAccess *PreheaderLoadMemoryAccess = MSSAU.createMemoryAccessInBB(
         PreheaderLoad, nullptr, PreheaderLoad->getParent(), MemorySSA::End);
