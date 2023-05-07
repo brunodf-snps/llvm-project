@@ -1076,7 +1076,8 @@ void llvm::getMetadataToPropagate(
 }
 
 /// \returns \p I after propagating metadata from \p VL.
-Instruction *llvm::propagateMetadata(Instruction *Inst, ArrayRef<Value *> VL) {
+Instruction *llvm::propagateMetadata(Instruction *Inst, ArrayRef<Value *> VL,
+                                     bool RemoveNoAlias) {
   if (VL.empty())
     return Inst;
   SmallVector<std::pair<unsigned, MDNode *>> Metadata;
@@ -1086,6 +1087,9 @@ Instruction *llvm::propagateMetadata(Instruction *Inst, ArrayRef<Value *> VL) {
     // Skip MMRA metadata if the instruction cannot have it.
     if (Kind == LLVMContext::MD_mmra && !canInstructionHaveMMRAs(*Inst))
       continue;
+
+    if (RemoveNoAlias && (Kind == LLVMContext::MD_noalias))
+      MD = nullptr;
 
     for (int J = 1, E = VL.size(); MD && J != E; ++J) {
       const Instruction *IJ = cast<Instruction>(VL[J]);
@@ -1774,6 +1778,13 @@ namespace llvm {
 template <>
 void InterleaveGroup<Instruction>::addMetadata(Instruction *NewInst) const {
   SmallVector<Value *, 4> VL(make_second_range(Members));
-  propagateMetadata(NewInst, VL);
+  bool HasProvenance = false;
+  for (auto* V : VL) {
+    if (isa<StoreInst>(V) || isa<LoadInst>(V)) {
+      HasProvenance = true;
+      break;
+    }
+  }
+  propagateMetadata(NewInst, VL, HasProvenance);
 }
 } // namespace llvm
