@@ -606,6 +606,7 @@ LoadInst *InstCombinerImpl::combineLoadToNewType(LoadInst &LI, Type *NewTy,
                                 LI.isVolatile(), LI.getName() + Suffix);
   NewLoad->setAtomic(LI.getOrdering(), LI.getSyncScopeID());
   copyMetadataForLoad(*NewLoad, LI);
+  NewLoad->copyPtrProvenanceOperand(LI);
   return NewLoad;
 }
 
@@ -775,8 +776,8 @@ static Instruction *unpackLoadToAggregate(InstCombinerImpl &IC, LoadInst &LI) {
           commonAlignment(Align, SL->getElementOffset(i).getKnownMinValue()),
           Name + ".unpack");
       // Propagate AA metadata. It'll still be valid on the narrowed load.
-      L->setAAMetadata(LI.getAAMetadata());
-      // Copy invariant metadata from parent load.
+      AAMDNodes AAMD = LI.getAAMetadata();
+      L->setAAMetadataPtrProvenance(AAMD);
       L->copyMetadata(LI, LLVMContext::MD_invariant_load);
       V = IC.Builder.CreateInsertValue(V, L, i);
     }
@@ -822,7 +823,7 @@ static Instruction *unpackLoadToAggregate(InstCombinerImpl &IC, LoadInst &LI) {
       auto EltAlign = commonAlignment(Align, Offset.getKnownMinValue());
       auto *L = IC.Builder.CreateAlignedLoad(AT->getElementType(), Ptr,
                                              EltAlign, Name + ".unpack");
-      L->setAAMetadata(LI.getAAMetadata());
+      L->setAAMetadataPtrProvenance(LI.getAAMetadata());
       V = IC.Builder.CreateInsertValue(V, L, i);
       Offset += EltSize;
     }
@@ -1090,6 +1091,15 @@ Instruction *InstCombinerImpl::visitLoadInst(LoadInst &LI) {
   if (Value *Res = simplifyLoadInst(&LI, Op, SQ.getWithInstruction(&LI)))
     return replaceInstUsesWith(LI, Res);
 
+  if (LI.hasPtrProvenanceOperand()) {
+    if (LI.getPtrProvenanceOperand() == LI.getPointerOperand() ||
+        isa<UndefValue>(LI.getPtrProvenanceOperand())) {
+      // degenerated ptr_provenance
+      LI.removePtrProvenanceOperand();
+      return &LI;
+    }
+  }
+
   // Try to canonicalize the loaded type.
   if (Instruction *Res = combineLoadToOperationType(*this, LI))
     return Res;
@@ -1330,8 +1340,8 @@ static bool unpackStoreToAggregate(InstCombinerImpl &IC, StoreInst &SI) {
       auto *Val = IC.Builder.CreateExtractValue(V, i, EltName);
       auto EltAlign =
           commonAlignment(Align, SL->getElementOffset(i).getKnownMinValue());
-      llvm::Instruction *NS = IC.Builder.CreateAlignedStore(Val, Ptr, EltAlign);
-      NS->setAAMetadata(SI.getAAMetadata());
+      llvm::StoreInst *NS = IC.Builder.CreateAlignedStore(Val, Ptr, EltAlign);
+      NS->setAAMetadataPtrProvenance(SI.getAAMetadata());
     }
 
     return true;
@@ -1376,8 +1386,8 @@ static bool unpackStoreToAggregate(InstCombinerImpl &IC, StoreInst &SI) {
           IC.Builder.CreateInBoundsGEP(AT, Addr, ArrayRef(Indices), AddrName);
       auto *Val = IC.Builder.CreateExtractValue(V, i, EltName);
       auto EltAlign = commonAlignment(Align, Offset.getKnownMinValue());
-      Instruction *NS = IC.Builder.CreateAlignedStore(Val, Ptr, EltAlign);
-      NS->setAAMetadata(SI.getAAMetadata());
+      auto *NS = IC.Builder.CreateAlignedStore(Val, Ptr, EltAlign);
+      NS->setAAMetadataPtrProvenance(SI.getAAMetadata());
       Offset += EltSize;
     }
 
@@ -1419,6 +1429,15 @@ static bool equivalentAddressValues(Value *A, Value *B) {
 Instruction *InstCombinerImpl::visitStoreInst(StoreInst &SI) {
   Value *Val = SI.getOperand(0);
   Value *Ptr = SI.getOperand(1);
+
+  if (SI.hasPtrProvenanceOperand()) {
+    if (SI.getPtrProvenanceOperand() == SI.getPointerOperand() ||
+        isa<UndefValue>(SI.getPtrProvenanceOperand())) {
+      // degenerated ptr_provenance
+      SI.removePtrProvenanceOperand();
+      return &SI;
+    }
+  }
 
   // Try to canonicalize the stored type.
   if (combineStoreToValueType(*this, SI))
@@ -1657,8 +1676,17 @@ bool InstCombinerImpl::mergeStoreIntoSuccessor(StoreInst &SI) {
 
   // If the two stores had AA tags, merge them.
   AAMDNodes AATags = SI.getAAMetadata();
-  if (AATags)
-    NewSI->setAAMetadata(AATags.merge(OtherStore->getAAMetadata()));
+  if (AATags) {
+    AATags = AATags.merge(OtherStore->getAAMetadata());
+    NewSI->setAAMetadataPtrProvenance(AATags);
+  }
+
+  auto CommonPtrProvenance = SI.getOptionalPtrProvenance();
+  CommonPtrProvenance =
+      mergePtrProvenance(CommonPtrProvenance,
+                         OtherStore->getOptionalPtrProvenance());
+  if (CommonPtrProvenance)
+    NewSI->setPtrProvenanceOperand(CommonPtrProvenance.value());
 
   // Nuke the old stores.
   eraseInstFromFunction(SI);
