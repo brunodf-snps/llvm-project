@@ -8,11 +8,13 @@ define void @caller(ptr addrspace(3) %addr_f, ptr addrspace(1) %use_f) {
 ; OPT-LABEL: define void @caller(
 ; OPT-SAME: ptr addrspace(3) [[ADDR_F:%.*]], ptr addrspace(1) [[USE_F:%.*]]) {
 ; OPT-NEXT:  [[ENTRY:.*:]]
-; OPT-NEXT:    call void @llvm.experimental.noalias.scope.decl(metadata [[META0:![0-9]+]])
-; OPT-NEXT:    call void @llvm.experimental.noalias.scope.decl(metadata [[META3:![0-9]+]])
-; OPT-NEXT:    [[GEP_I:%.*]] = getelementptr i64, ptr addrspace(3) [[ADDR_F]], i32 4
-; OPT-NEXT:    [[VAL_I:%.*]] = call <2 x i32> @llvm.amdgcn.ds.read.tr4.b64.v2i32(ptr addrspace(3) [[GEP_I]]), !alias.scope [[META0]], !noalias [[META3]]
-; OPT-NEXT:    store <2 x i32> [[VAL_I]], ptr addrspace(1) [[USE_F]], align 8, !alias.scope [[META3]], !noalias [[META0]]
+; OPT-NEXT:    [[TMP0:%.*]] = call ptr @llvm.noalias.decl.p0.p0.i64(ptr null, i64 0, metadata [[META0:![0-9]+]])
+; OPT-NEXT:    [[ADDR_F_NA:%.*]] = call ptr addrspace(3) @llvm.noalias.p3.p0.p0.i64(ptr addrspace(3) [[ADDR_F]], ptr [[TMP0]], ptr null, i64 0, metadata [[META0]]), !noalias [[META3:![0-9]+]]
+; OPT-NEXT:    [[TMP2:%.*]] = call ptr @llvm.noalias.decl.p0.p0.i64(ptr null, i64 0, metadata [[META5:![0-9]+]])
+; OPT-NEXT:    [[TMP3:%.*]] = call ptr addrspace(1) @llvm.noalias.p1.p0.p0.i64(ptr addrspace(1) [[USE_F]], ptr [[TMP2]], ptr null, i64 0, metadata [[META5]]), !noalias [[META3]]
+; OPT-NEXT:    [[GEP_I:%.*]] = getelementptr i64, ptr addrspace(3) [[ADDR_F_NA]], i32 4
+; OPT-NEXT:    [[VAL_I:%.*]] = call <2 x i32> @llvm.amdgcn.ds.read.tr4.b64.v2i32(ptr addrspace(3) [[GEP_I]]), !noalias [[META3]]
+; OPT-NEXT:    store <2 x i32> [[VAL_I]], ptr addrspace(1) [[TMP3]], align 8, !noalias [[META3]]
 ; OPT-NEXT:    ret void
 ;
 entry:
@@ -35,16 +37,17 @@ entry:
   store <2 x i32> %val, ptr addrspace(1) %use
   ret void
 }
-;.
 ; Check Function Attribute on decl
-; OPT: declare <2 x i32> @llvm.amdgcn.ds.read.tr4.b64.v2i32(ptr addrspace(3) captures(none)) #[[ATTR0:[0-9]+]]
 declare <2 x i32> @llvm.amdgcn.ds.read.tr4.b64.v2i32(ptr addrspace(3))
-; OPT: attributes #[[ATTR0]] = { convergent nocallback nofree nounwind willreturn memory(argmem: read) }
+;.
+; OPT: attributes #[[ATTR0:[0-9]+]] = { convergent nocallback nofree nounwind willreturn memory(argmem: read) }
 ; OPT: attributes #[[ATTR1:[0-9]+]] = { nocallback nofree nosync nounwind willreturn memory(inaccessiblemem: readwrite) }
+; OPT: attributes #[[ATTR2:[0-9]+]] = { nocallback nofree nosync nounwind speculatable willreturn memory(argmem: readwrite) }
 ;.
 ; OPT: [[META0]] = !{[[META1:![0-9]+]]}
 ; OPT: [[META1]] = distinct !{[[META1]], [[META2:![0-9]+]], !"callee: %addr"}
 ; OPT: [[META2]] = distinct !{[[META2]], !"callee"}
-; OPT: [[META3]] = !{[[META4:![0-9]+]]}
+; OPT: [[META3]] = !{[[META1]], [[META4:![0-9]+]]}
 ; OPT: [[META4]] = distinct !{[[META4]], [[META2]], !"callee: %use"}
+; OPT: [[META5]] = !{[[META4]]}
 ;.
