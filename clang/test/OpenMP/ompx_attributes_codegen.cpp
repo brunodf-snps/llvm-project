@@ -23,7 +23,7 @@ void func() {
 
   // SPIRV: spir_kernel void @__omp_offloading[[HASH:.*]]_l28(ptr {{[^,]+}}) #0
   // SPIRV: spir_kernel void @__omp_offloading[[HASH:.*]]_l30(ptr {{[^,]+}})
-  // SPIRV: spir_kernel void @__omp_offloading[[HASH:.*]]_l32(ptr {{[^,]+}}) #4
+  // SPIRV: spir_kernel void @__omp_offloading[[HASH:.*]]_l32(ptr {{[^,]+}}) #5
 
   #pragma omp target ompx_attribute([[clang::amdgpu_flat_work_group_size(10, 20)]])
   {}
@@ -37,7 +37,7 @@ void func() {
 // SPIRV: attributes #0
 // SPIRV-SAME: "nvvm.maxntid"="20"
 // SPIRV-SAME: "omp_target_thread_limit"="20" 
-// SPIRV: attributes #4
+// SPIRV: attributes #5
 // SPIRV-SAME: "amdgpu-waves-per-eu"="3,7"
 // SPIRV-SAME: "nvvm.maxntid"="17"
 // SPIRV-SAME: "omp_target_thread_limit"="17"

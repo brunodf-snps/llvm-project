@@ -25,10 +25,10 @@ void foo(int N) {
 
 #endif
 
-// CHECK: define weak_odr protected {{amdgpu|spir}}_kernel void @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+__Z3fooi_}}l12({{.*}}) #[[ATTR1:.+]] {
-// CHECK: define weak_odr protected {{amdgpu|spir}}_kernel void @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+__Z3fooi_}}l15({{.*}}) #[[ATTR2:.+]] {
-// CHECK: define weak_odr protected {{amdgpu|spir}}_kernel void @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+__Z3fooi_}}l18({{.*}}) #[[ATTR3:.+]] {
-// CHECK: define weak_odr protected {{amdgpu|spir}}_kernel void @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+__Z3fooi_}}l21({{.*}}) #[[ATTR4:.+]] {
+// CHECK: define weak_odr protected {{amdgpu|spir}}_kernel void @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+__Z3fooi_}}l12({{.*}}) #[[ATTR1:[0-9]+]]{{.*}}{
+// CHECK: define weak_odr protected {{amdgpu|spir}}_kernel void @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+__Z3fooi_}}l15({{.*}}) #[[ATTR2:[0-9]+]]{{.*}}{
+// CHECK: define weak_odr protected {{amdgpu|spir}}_kernel void @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+__Z3fooi_}}l18({{.*}}) #[[ATTR3:[0-9]+]]{{.*}}{
+// CHECK: define weak_odr protected {{amdgpu|spir}}_kernel void @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+__Z3fooi_}}l21({{.*}}) #[[ATTR4:[0-9]+]]{{.*}}{
 
 // CHECK-AMDGPU: attributes #[[ATTR1]] = { {{.*}} "amdgpu-flat-work-group-size"="1,256" {{.*}} }
 // CHECK-AMDGPU: attributes #[[ATTR2]] = { {{.*}} "amdgpu-flat-work-group-size"="1,4" {{.*}} }

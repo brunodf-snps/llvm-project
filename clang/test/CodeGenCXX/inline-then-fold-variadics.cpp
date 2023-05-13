@@ -157,17 +157,31 @@ extern "C" {
 int first_i32_asc(int x, asc *y) { return first<int, asc>(x, *y); }
 
 // CHECK-LABEL: define void @second_i32_asc(
-// CHECK-SAME: i32 noundef [[X:%.*]], ptr noundef readonly captures(none) [[Y:%.*]], ptr noundef writeonly captures(none) initializes((0, 24)) [[R:%.*]]) local_unnamed_addr #[[ATTR1]] {
+// CHECK-SAME: i32 noundef [[X:%.*]], ptr noundef readonly captures(none) [[Y:%.*]], ptr noundef writeonly captures(none) initializes((0, 24)) [[R:%.*]]) local_unnamed_addr #[[ATTR3:[0-9]+]] {
 // CHECK-NEXT:  [[ENTRY:.*:]]
-// CHECK-NEXT:    tail call void @llvm.memmove.p0.p0.i32(ptr noundef nonnull align 8 dereferenceable(24) [[R]], ptr noundef nonnull align 1 dereferenceable(24) [[Y]], i32 24, i1 false)
+// CHECK-NEXT:    [[REF_TMP:%.*]] = alloca [[STRUCT_ASC:%.*]], align 8
+// CHECK-NEXT:    call void @llvm.lifetime.start.p0(ptr nonnull [[REF_TMP]])
+// CHECK-NEXT:    [[TMP0:%.*]] = tail call ptr @llvm.noalias.decl.p0.p0.i64(ptr null, i64 0, metadata [[META7:![0-9]+]])
+// CHECK-NEXT:    [[TMP1:%.*]] = call ptr @llvm.provenance.noalias.p0.p0.p0.p0.i64(ptr nonnull [[REF_TMP]], ptr [[TMP0]], ptr null, ptr undef, i64 0, metadata [[META7]]), !noalias [[META7]]
+// CHECK-NEXT:    [[DOTGUARD_GUARD:%.*]] = call ptr @llvm.experimental.ptr.provenance.p0.p0(ptr nonnull [[REF_TMP]], ptr [[TMP1]])
+// CHECK-NEXT:    call void @llvm.memcpy.p0.p0.i32(ptr noundef nonnull align 8 dereferenceable(24) [[DOTGUARD_GUARD]], ptr noundef nonnull align 1 dereferenceable(24) [[Y]], i32 24, i1 false)
+// CHECK-NEXT:    call void @llvm.memcpy.p0.p0.i32(ptr noundef nonnull align 8 dereferenceable(24) [[R]], ptr noundef nonnull align 8 dereferenceable(24) [[REF_TMP]], i32 24, i1 false), !tbaa.struct [[TBAA_STRUCT10:![0-9]+]]
+// CHECK-NEXT:    call void @llvm.lifetime.end.p0(ptr nonnull [[REF_TMP]])
 // CHECK-NEXT:    ret void
 //
 void second_i32_asc(int x, asc *y, asc *r) { *r = second<int, asc>(x, *y); }
 
 // CHECK-LABEL: define void @first_asc_i32(
-// CHECK-SAME: ptr noundef readonly captures(none) [[X:%.*]], i32 noundef [[Y:%.*]], ptr noundef writeonly captures(none) initializes((0, 24)) [[R:%.*]]) local_unnamed_addr #[[ATTR1]] {
+// CHECK-SAME: ptr noundef readonly captures(none) [[X:%.*]], i32 noundef [[Y:%.*]], ptr noundef writeonly captures(none) initializes((0, 24)) [[R:%.*]]) local_unnamed_addr #[[ATTR3]] {
 // CHECK-NEXT:  [[ENTRY:.*:]]
-// CHECK-NEXT:    tail call void @llvm.memmove.p0.p0.i32(ptr noundef nonnull align 8 dereferenceable(24) [[R]], ptr noundef nonnull align 1 dereferenceable(24) [[X]], i32 24, i1 false)
+// CHECK-NEXT:    [[REF_TMP:%.*]] = alloca [[STRUCT_ASC:%.*]], align 8
+// CHECK-NEXT:    call void @llvm.lifetime.start.p0(ptr nonnull [[REF_TMP]])
+// CHECK-NEXT:    [[TMP0:%.*]] = tail call ptr @llvm.noalias.decl.p0.p0.i64(ptr null, i64 0, metadata [[META19:![0-9]+]])
+// CHECK-NEXT:    [[TMP1:%.*]] = call ptr @llvm.provenance.noalias.p0.p0.p0.p0.i64(ptr nonnull [[REF_TMP]], ptr [[TMP0]], ptr null, ptr undef, i64 0, metadata [[META19]]), !noalias [[META19]]
+// CHECK-NEXT:    [[DOTGUARD_GUARD:%.*]] = call ptr @llvm.experimental.ptr.provenance.p0.p0(ptr nonnull [[REF_TMP]], ptr [[TMP1]])
+// CHECK-NEXT:    call void @llvm.memcpy.p0.p0.i32(ptr noundef nonnull align 8 dereferenceable(24) [[DOTGUARD_GUARD]], ptr noundef nonnull align 1 dereferenceable(24) [[X]], i32 24, i1 false)
+// CHECK-NEXT:    call void @llvm.memcpy.p0.p0.i32(ptr noundef nonnull align 8 dereferenceable(24) [[R]], ptr noundef nonnull align 8 dereferenceable(24) [[REF_TMP]], i32 24, i1 false), !tbaa.struct [[TBAA_STRUCT10]]
+// CHECK-NEXT:    call void @llvm.lifetime.end.p0(ptr nonnull [[REF_TMP]])
 // CHECK-NEXT:    ret void
 //
 void first_asc_i32(asc *x, int y, asc *r) { *r = first<asc, int>(*x, y); }
@@ -180,7 +194,24 @@ void first_asc_i32(asc *x, int y, asc *r) { *r = first<asc, int>(*x, y); }
 int second_asc_i32(asc *x, int y) { return second<asc, int>(*x, y); }
 }
 //.
-// CHECK: [[META4:![0-9]+]] = !{!"omnipotent char", [[META5:![0-9]+]], i64 0}
+// CHECK: [[META2:![0-9]+]] = !{[[META3:![0-9]+]], [[META3]], i64 0}
+// CHECK: [[META3]] = !{!"int", [[META4:![0-9]+]], i64 0}
+// CHECK: [[META4]] = !{!"omnipotent char", [[META5:![0-9]+]], i64 0}
 // CHECK: [[META5]] = !{!"Simple C++ TBAA"}
 // CHECK: [[DOUBLE_TBAA6]] = !{[[META4]], [[META4]], i64 0}
+// CHECK: [[META7]] = !{[[META8:![0-9]+]]}
+// CHECK: [[META8]] = distinct !{[[META8]], [[META9:![0-9]+]], !"_ZL6secondIi3ascET0_z.valist: %agg.result"}
+// CHECK: [[META9]] = distinct !{[[META9]], !"_ZL6secondIi3ascET0_z.valist"}
+// CHECK: [[TBAA_STRUCT10]] = !{i64 0, i64 1, [[DOUBLE_TBAA6]], i64 2, i64 2, [[META11:![0-9]+]], i64 4, i64 4, [[META2]], i64 8, i64 4, [[META13:![0-9]+]], i64 12, i64 4, [[META15:![0-9]+]], i64 16, i64 8, [[META17:![0-9]+]]}
+// CHECK: [[META11]] = !{[[META12:![0-9]+]], [[META12]], i64 0}
+// CHECK: [[META12]] = !{!"short", [[META4]], i64 0}
+// CHECK: [[META13]] = !{[[META14:![0-9]+]], [[META14]], i64 0}
+// CHECK: [[META14]] = !{!"long", [[META4]], i64 0}
+// CHECK: [[META15]] = !{[[META16:![0-9]+]], [[META16]], i64 0}
+// CHECK: [[META16]] = !{!"float", [[META4]], i64 0}
+// CHECK: [[META17]] = !{[[META18:![0-9]+]], [[META18]], i64 0}
+// CHECK: [[META18]] = !{!"double", [[META4]], i64 0}
+// CHECK: [[META19]] = !{[[META20:![0-9]+]]}
+// CHECK: [[META20]] = distinct !{[[META20]], [[META21:![0-9]+]], !"_ZL5firstI3asciET_z.valist: %agg.result"}
+// CHECK: [[META21]] = distinct !{[[META21]], !"_ZL5firstI3asciET_z.valist"}
 //.

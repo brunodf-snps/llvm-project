@@ -24,7 +24,7 @@ void foo() {
 // CHECK-NEXT:    call void @__kmpc_serialized_parallel(ptr @[[GLOB1]], i32 [[TMP0]])
 // CHECK-NEXT:    store i32 [[TMP0]], ptr [[DOTTHREADID_TEMP_]], align 4, !tbaa [[INT_TBAA3:![0-9]+]]
 // CHECK-NEXT:    store i32 0, ptr [[DOTBOUND_ZERO_ADDR]], align 4
-// CHECK-NEXT:    call void @_Z3foov.omp_outlined(ptr [[DOTTHREADID_TEMP_]], ptr [[DOTBOUND_ZERO_ADDR]]) #[[ATTR2:[0-9]+]]
+// CHECK-NEXT:    call void @_Z3foov.omp_outlined(ptr [[DOTTHREADID_TEMP_]], ptr [[DOTBOUND_ZERO_ADDR]]) #[[ATTR3:[0-9]+]]
 // CHECK-NEXT:    call void @__kmpc_end_serialized_parallel(ptr @[[GLOB1]], i32 [[TMP0]])
 // CHECK-NEXT:    call void (ptr, i32, ptr, ...) @__kmpc_fork_call(ptr @[[GLOB1]], i32 0, ptr @_Z3foov.omp_outlined.1)
 // CHECK-NEXT:    ret void
@@ -36,19 +36,23 @@ void foo() {
 // CHECK-NEXT:  [[ENTRY:.*:]]
 // CHECK-NEXT:    [[DOTGLOBAL_TID__ADDR:%.*]] = alloca ptr, align 8
 // CHECK-NEXT:    [[DOTBOUND_TID__ADDR:%.*]] = alloca ptr, align 8
-// CHECK-NEXT:    store ptr [[DOTGLOBAL_TID_]], ptr [[DOTGLOBAL_TID__ADDR]], align 8, !tbaa [[INTPTR_TBAA7:![0-9]+]]
-// CHECK-NEXT:    store ptr [[DOTBOUND_TID_]], ptr [[DOTBOUND_TID__ADDR]], align 8, !tbaa [[INTPTR_TBAA7]]
+// CHECK-NEXT:    [[TMP0:%.*]] = call ptr @llvm.noalias.decl.p0.p0.i64(ptr [[DOTGLOBAL_TID__ADDR]], i64 0, metadata [[META7:![0-9]+]])
+// CHECK-NEXT:    store ptr [[DOTGLOBAL_TID_]], ptr [[DOTGLOBAL_TID__ADDR]], align 8, !tbaa [[INTPTR_TBAA10:![0-9]+]]
+// CHECK-NEXT:    [[TMP1:%.*]] = call ptr @llvm.noalias.decl.p0.p0.i64(ptr [[DOTBOUND_TID__ADDR]], i64 0, metadata [[META13:![0-9]+]])
+// CHECK-NEXT:    store ptr [[DOTBOUND_TID_]], ptr [[DOTBOUND_TID__ADDR]], align 8, !tbaa [[INTPTR_TBAA10]]
 // CHECK-NEXT:    ret void
 //
 //
 // CHECK: Function Attrs: alwaysinline norecurse nounwind
 // CHECK-LABEL: define internal void @_Z3foov.omp_outlined.1(
-// CHECK-SAME: ptr noalias noundef [[DOTGLOBAL_TID_:%.*]], ptr noalias noundef [[DOTBOUND_TID_:%.*]]) #[[ATTR3:[0-9]+]] {
+// CHECK-SAME: ptr noalias noundef [[DOTGLOBAL_TID_:%.*]], ptr noalias noundef [[DOTBOUND_TID_:%.*]]) #[[ATTR4:[0-9]+]] {
 // CHECK-NEXT:  [[ENTRY:.*:]]
 // CHECK-NEXT:    [[DOTGLOBAL_TID__ADDR:%.*]] = alloca ptr, align 8
 // CHECK-NEXT:    [[DOTBOUND_TID__ADDR:%.*]] = alloca ptr, align 8
-// CHECK-NEXT:    store ptr [[DOTGLOBAL_TID_]], ptr [[DOTGLOBAL_TID__ADDR]], align 8, !tbaa [[INTPTR_TBAA7]]
-// CHECK-NEXT:    store ptr [[DOTBOUND_TID_]], ptr [[DOTBOUND_TID__ADDR]], align 8, !tbaa [[INTPTR_TBAA7]]
+// CHECK-NEXT:    [[TMP0:%.*]] = call ptr @llvm.noalias.decl.p0.p0.i64(ptr [[DOTGLOBAL_TID__ADDR]], i64 0, metadata [[META15:![0-9]+]])
+// CHECK-NEXT:    store ptr [[DOTGLOBAL_TID_]], ptr [[DOTGLOBAL_TID__ADDR]], align 8, !tbaa [[INTPTR_TBAA10]]
+// CHECK-NEXT:    [[TMP1:%.*]] = call ptr @llvm.noalias.decl.p0.p0.i64(ptr [[DOTBOUND_TID__ADDR]], i64 0, metadata [[META18:![0-9]+]])
+// CHECK-NEXT:    store ptr [[DOTBOUND_TID_]], ptr [[DOTBOUND_TID__ADDR]], align 8, !tbaa [[INTPTR_TBAA10]]
 // CHECK-NEXT:    ret void
 //
 //
@@ -62,7 +66,7 @@ void foo() {
 // CHECK-NOINLINE-NEXT:    call void @__kmpc_serialized_parallel(ptr @[[GLOB1]], i32 [[TMP0]])
 // CHECK-NOINLINE-NEXT:    store i32 [[TMP0]], ptr [[DOTTHREADID_TEMP_]], align 4, !tbaa [[INT_TBAA3:![0-9]+]]
 // CHECK-NOINLINE-NEXT:    store i32 0, ptr [[DOTBOUND_ZERO_ADDR]], align 4
-// CHECK-NOINLINE-NEXT:    call void @_Z3foov.omp_outlined(ptr [[DOTTHREADID_TEMP_]], ptr [[DOTBOUND_ZERO_ADDR]]) #[[ATTR2:[0-9]+]]
+// CHECK-NOINLINE-NEXT:    call void @_Z3foov.omp_outlined(ptr [[DOTTHREADID_TEMP_]], ptr [[DOTBOUND_ZERO_ADDR]]) #[[ATTR3:[0-9]+]]
 // CHECK-NOINLINE-NEXT:    call void @__kmpc_end_serialized_parallel(ptr @[[GLOB1]], i32 [[TMP0]])
 // CHECK-NOINLINE-NEXT:    call void (ptr, i32, ptr, ...) @__kmpc_fork_call(ptr @[[GLOB1]], i32 0, ptr @_Z3foov.omp_outlined.1)
 // CHECK-NOINLINE-NEXT:    ret void
@@ -74,19 +78,23 @@ void foo() {
 // CHECK-NOINLINE-NEXT:  [[ENTRY:.*:]]
 // CHECK-NOINLINE-NEXT:    [[DOTGLOBAL_TID__ADDR:%.*]] = alloca ptr, align 8
 // CHECK-NOINLINE-NEXT:    [[DOTBOUND_TID__ADDR:%.*]] = alloca ptr, align 8
-// CHECK-NOINLINE-NEXT:    store ptr [[DOTGLOBAL_TID_]], ptr [[DOTGLOBAL_TID__ADDR]], align 8, !tbaa [[INTPTR_TBAA7:![0-9]+]]
-// CHECK-NOINLINE-NEXT:    store ptr [[DOTBOUND_TID_]], ptr [[DOTBOUND_TID__ADDR]], align 8, !tbaa [[INTPTR_TBAA7]]
+// CHECK-NOINLINE-NEXT:    [[TMP0:%.*]] = call ptr @llvm.noalias.decl.p0.p0.i64(ptr [[DOTGLOBAL_TID__ADDR]], i64 0, metadata [[META7:![0-9]+]])
+// CHECK-NOINLINE-NEXT:    store ptr [[DOTGLOBAL_TID_]], ptr [[DOTGLOBAL_TID__ADDR]], align 8, !tbaa [[INTPTR_TBAA10:![0-9]+]]
+// CHECK-NOINLINE-NEXT:    [[TMP1:%.*]] = call ptr @llvm.noalias.decl.p0.p0.i64(ptr [[DOTBOUND_TID__ADDR]], i64 0, metadata [[META13:![0-9]+]])
+// CHECK-NOINLINE-NEXT:    store ptr [[DOTBOUND_TID_]], ptr [[DOTBOUND_TID__ADDR]], align 8, !tbaa [[INTPTR_TBAA10]]
 // CHECK-NOINLINE-NEXT:    ret void
 //
 //
 // CHECK-NOINLINE: Function Attrs: alwaysinline norecurse nounwind
 // CHECK-NOINLINE-LABEL: define internal void @_Z3foov.omp_outlined.1(
-// CHECK-NOINLINE-SAME: ptr noalias noundef [[DOTGLOBAL_TID_:%.*]], ptr noalias noundef [[DOTBOUND_TID_:%.*]]) #[[ATTR3:[0-9]+]] {
+// CHECK-NOINLINE-SAME: ptr noalias noundef [[DOTGLOBAL_TID_:%.*]], ptr noalias noundef [[DOTBOUND_TID_:%.*]]) #[[ATTR4:[0-9]+]] {
 // CHECK-NOINLINE-NEXT:  [[ENTRY:.*:]]
 // CHECK-NOINLINE-NEXT:    [[DOTGLOBAL_TID__ADDR:%.*]] = alloca ptr, align 8
 // CHECK-NOINLINE-NEXT:    [[DOTBOUND_TID__ADDR:%.*]] = alloca ptr, align 8
-// CHECK-NOINLINE-NEXT:    store ptr [[DOTGLOBAL_TID_]], ptr [[DOTGLOBAL_TID__ADDR]], align 8, !tbaa [[INTPTR_TBAA7]]
-// CHECK-NOINLINE-NEXT:    store ptr [[DOTBOUND_TID_]], ptr [[DOTBOUND_TID__ADDR]], align 8, !tbaa [[INTPTR_TBAA7]]
+// CHECK-NOINLINE-NEXT:    [[TMP0:%.*]] = call ptr @llvm.noalias.decl.p0.p0.i64(ptr [[DOTGLOBAL_TID__ADDR]], i64 0, metadata [[META15:![0-9]+]])
+// CHECK-NOINLINE-NEXT:    store ptr [[DOTGLOBAL_TID_]], ptr [[DOTGLOBAL_TID__ADDR]], align 8, !tbaa [[INTPTR_TBAA10]]
+// CHECK-NOINLINE-NEXT:    [[TMP1:%.*]] = call ptr @llvm.noalias.decl.p0.p0.i64(ptr [[DOTBOUND_TID__ADDR]], i64 0, metadata [[META18:![0-9]+]])
+// CHECK-NOINLINE-NEXT:    store ptr [[DOTBOUND_TID_]], ptr [[DOTBOUND_TID__ADDR]], align 8, !tbaa [[INTPTR_TBAA10]]
 // CHECK-NOINLINE-NEXT:    ret void
 //
 //.
@@ -94,15 +102,35 @@ void foo() {
 // CHECK: [[META4]] = !{!"int", [[META5:![0-9]+]], i64 0}
 // CHECK: [[META5]] = !{!"omnipotent char", [[META6:![0-9]+]], i64 0}
 // CHECK: [[META6]] = !{!"Simple C++ TBAA"}
-// CHECK: [[INTPTR_TBAA7]] = !{[[META8:![0-9]+]], [[META8]], i64 0}
-// CHECK: [[META8]] = !{!"p1 int", [[META9:![0-9]+]], i64 0}
-// CHECK: [[META9]] = !{!"any pointer", [[META5]], i64 0}
+// CHECK: [[META7]] = !{[[META8:![0-9]+]]}
+// CHECK: [[META8]] = distinct !{[[META8]], [[META9:![0-9]+]], !"_Z3foov.omp_outlined: .global_tid."}
+// CHECK: [[META9]] = distinct !{[[META9]], !"_Z3foov.omp_outlined"}
+// CHECK: [[INTPTR_TBAA10]] = !{[[META11:![0-9]+]], [[META11]], i64 0}
+// CHECK: [[META11]] = !{!"p1 int", [[META12:![0-9]+]], i64 0}
+// CHECK: [[META12]] = !{!"any pointer", [[META5]], i64 0}
+// CHECK: [[META13]] = !{[[META14:![0-9]+]]}
+// CHECK: [[META14]] = distinct !{[[META14]], [[META9]], !"_Z3foov.omp_outlined: .bound_tid."}
+// CHECK: [[META15]] = !{[[META16:![0-9]+]]}
+// CHECK: [[META16]] = distinct !{[[META16]], [[META17:![0-9]+]], !"_Z3foov.omp_outlined.1: .global_tid."}
+// CHECK: [[META17]] = distinct !{[[META17]], !"_Z3foov.omp_outlined.1"}
+// CHECK: [[META18]] = !{[[META19:![0-9]+]]}
+// CHECK: [[META19]] = distinct !{[[META19]], [[META17]], !"_Z3foov.omp_outlined.1: .bound_tid."}
 //.
 // CHECK-NOINLINE: [[INT_TBAA3]] = !{[[META4:![0-9]+]], [[META4]], i64 0}
 // CHECK-NOINLINE: [[META4]] = !{!"int", [[META5:![0-9]+]], i64 0}
 // CHECK-NOINLINE: [[META5]] = !{!"omnipotent char", [[META6:![0-9]+]], i64 0}
 // CHECK-NOINLINE: [[META6]] = !{!"Simple C++ TBAA"}
-// CHECK-NOINLINE: [[INTPTR_TBAA7]] = !{[[META8:![0-9]+]], [[META8]], i64 0}
-// CHECK-NOINLINE: [[META8]] = !{!"p1 int", [[META9:![0-9]+]], i64 0}
-// CHECK-NOINLINE: [[META9]] = !{!"any pointer", [[META5]], i64 0}
+// CHECK-NOINLINE: [[META7]] = !{[[META8:![0-9]+]]}
+// CHECK-NOINLINE: [[META8]] = distinct !{[[META8]], [[META9:![0-9]+]], !"_Z3foov.omp_outlined: .global_tid."}
+// CHECK-NOINLINE: [[META9]] = distinct !{[[META9]], !"_Z3foov.omp_outlined"}
+// CHECK-NOINLINE: [[INTPTR_TBAA10]] = !{[[META11:![0-9]+]], [[META11]], i64 0}
+// CHECK-NOINLINE: [[META11]] = !{!"p1 int", [[META12:![0-9]+]], i64 0}
+// CHECK-NOINLINE: [[META12]] = !{!"any pointer", [[META5]], i64 0}
+// CHECK-NOINLINE: [[META13]] = !{[[META14:![0-9]+]]}
+// CHECK-NOINLINE: [[META14]] = distinct !{[[META14]], [[META9]], !"_Z3foov.omp_outlined: .bound_tid."}
+// CHECK-NOINLINE: [[META15]] = !{[[META16:![0-9]+]]}
+// CHECK-NOINLINE: [[META16]] = distinct !{[[META16]], [[META17:![0-9]+]], !"_Z3foov.omp_outlined.1: .global_tid."}
+// CHECK-NOINLINE: [[META17]] = distinct !{[[META17]], !"_Z3foov.omp_outlined.1"}
+// CHECK-NOINLINE: [[META18]] = !{[[META19:![0-9]+]]}
+// CHECK-NOINLINE: [[META19]] = distinct !{[[META19]], [[META17]], !"_Z3foov.omp_outlined.1: .bound_tid."}
 //.
