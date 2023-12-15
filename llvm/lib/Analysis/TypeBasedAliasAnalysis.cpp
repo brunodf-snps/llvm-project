@@ -547,6 +547,7 @@ AAMDNodes AAMDNodes::merge(const AAMDNodes &Other) const {
   Result.NoAlias = MDNode::intersect(NoAlias, Other.NoAlias);
   Result.NoAliasAddrSpace = MDNode::getMostGenericNoaliasAddrspace(
       NoAliasAddrSpace, Other.NoAliasAddrSpace);
+  Result.MergeInPtrProvenance(*this, Other);
   return Result;
 }
 
@@ -557,6 +558,7 @@ AAMDNodes AAMDNodes::concat(const AAMDNodes &Other) const {
   Result.NoAlias = MDNode::intersect(NoAlias, Other.NoAlias);
   Result.NoAliasAddrSpace = MDNode::getMostGenericNoaliasAddrspace(
       NoAliasAddrSpace, Other.NoAliasAddrSpace);
+  Result.MergeInPtrProvenance(*this, Other);
   return Result;
 }
 
