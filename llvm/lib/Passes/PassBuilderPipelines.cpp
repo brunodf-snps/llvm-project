@@ -1388,6 +1388,7 @@ void PassBuilder::addVectorPasses(OptimizationLevel Level,
         Level.getSpeedupLevel(), /*OnlyWhenForced=*/!PTO.LoopUnrolling,
         PTO.ForgetAllSCEVInLoopUnroll)));
     FPM.addPass(WarnMissedTransformationsPass());
+    FPM.addPass(ConnectNoAliasDeclPass()); // Do this before SROA
     // Now that we are done with loop unrolling, be it either by LoopVectorizer,
     // or LoopUnroll passes, some variable-offset GEP's into alloca's could have
     // become constant-offset, thus enabling SROA and alloca promotion. Do so.
@@ -1395,6 +1396,10 @@ void PassBuilder::addVectorPasses(OptimizationLevel Level,
     // or SimplifyCFG passes scheduled after us, that would cleanup
     // the CFG mess this may created if allowed to modify CFG, so forbid that.
     FPM.addPass(SROAPass(SROAOptions::PreserveCFG));
+
+    // Propagate and Convert as early as possible.
+    // But do it after SROA and EarlyCSE !
+    FPM.addPass(PropagateAndConvertNoAliasPass());
   }
 
   if (!IsFullLTO) {
@@ -1480,6 +1485,7 @@ void PassBuilder::addVectorPasses(OptimizationLevel Level,
         Level.getSpeedupLevel(), /*OnlyWhenForced=*/!PTO.LoopUnrolling,
         PTO.ForgetAllSCEVInLoopUnroll)));
     FPM.addPass(WarnMissedTransformationsPass());
+    FPM.addPass(ConnectNoAliasDeclPass()); // Do this before SROA
     // Now that we are done with loop unrolling, be it either by LoopVectorizer,
     // or LoopUnroll passes, some variable-offset GEP's into alloca's could have
     // become constant-offset, thus enabling SROA and alloca promotion. Do so.
@@ -1487,6 +1493,10 @@ void PassBuilder::addVectorPasses(OptimizationLevel Level,
     // or SimplifyCFG passes scheduled after us, that would cleanup
     // the CFG mess this may created if allowed to modify CFG, so forbid that.
     FPM.addPass(SROAPass(SROAOptions::PreserveCFG));
+
+    // Propagate and Convert as early as possible.
+    // But do it after SROA and EarlyCSE !
+    FPM.addPass(PropagateAndConvertNoAliasPass());
   }
 
   FPM.addPass(InferAlignmentPass());
