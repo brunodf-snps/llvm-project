@@ -16,6 +16,7 @@
 namespace llvm {
 class Function;
 class Loop;
+class Value;
 
 /// Connect llvm.noalias.decl to noalias/provenance.noalias intrinsics that are
 /// associated with the unknown function scope and based on the same alloca.
@@ -25,6 +26,11 @@ bool propagateAndConnectNoAliasDecl(Function *F);
 /// Clone the llvm.noalias.decl intrinsics that are defined inside the loop
 /// and used outside the loop into the exit blocks.
 void cloneNoAliasDeclIntoExit(Loop *L);
+
+/// Only does something when V is a llvm.noalias.decl intrinsic.
+/// Ensure that all direct users of llvm.noalias.decl make use of the same scope.
+/// Returns true if any scope needed to be adapted, false otherwise.
+bool enforceNoAliasDeclScopeOntoUsers(Value *V);
 } // end namespace llvm
 
 #endif // LLVM_TRANSFORMS_UTILS_NOALIASUTILS_H
