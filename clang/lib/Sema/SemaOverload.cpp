@@ -1891,6 +1891,109 @@ bool Sema::TryFunctionConversion(QualType FromType, QualType ToType,
   return Changed;
 }
 
+bool Sema::IsLegalExtInfoConversion(const FunctionType *FromFn, const FunctionType *ToFn) const {
+  FunctionType::ExtInfo FromEInfo = FromFn->getExtInfo();
+  FunctionType::ExtInfo ToEInfo = ToFn->getExtInfo();
+
+  // Allow 'noreturn' if present in source type.
+  if (ToEInfo.getNoReturn() && !FromEInfo.getNoReturn())
+    return false;
+
+  // Disallow any mismatch in CC, noreturn, produces, nocallersavedregs, nocfcheck, cmsenscall?
+  if (ToEInfo.getProducesResult() != FromEInfo.getProducesResult() ||
+      ToEInfo.getCmseNSCall() != FromEInfo.getCmseNSCall() ||
+      ToEInfo.getNoCallerSavedRegs() != FromEInfo.getNoCallerSavedRegs() ||
+      ToEInfo.getNoCfCheck() != FromEInfo.getNoCfCheck() ||
+      ToEInfo.getCC() != FromEInfo.getCC())
+    return false;
+
+  // Disallow any mismatch in regparm
+  if (ToEInfo.getHasRegParm() != FromEInfo.getHasRegParm() ||
+      (ToEInfo.getHasRegParm() &&
+       ToEInfo.getRegParm() != FromEInfo.getRegParm()))
+    return false;
+
+  const auto *FromFPT = dyn_cast<FunctionProtoType>(FromFn);
+  const auto *ToFPT = dyn_cast<FunctionProtoType>(ToFn);
+
+  // Return early if we know all following checks will succeed
+  if (!FromFPT && !ToFPT)
+    return true;
+
+  // We can allow mismatches in parameter and return types, and we can match a prototype
+  // against no prototype, but the following is a minimum to match ExtParameterInfo below
+  if (FromFPT && ToFPT && FromFPT->getNumParams() != ToFPT->getNumParams())
+    return false;
+
+  // Use default constructed ExtProtoInfo in case of no function prototype for easier checking
+  FunctionProtoType::ExtProtoInfo FromEFI;
+  if (FromFPT)
+    FromEFI = FromFPT->getExtProtoInfo();
+  FunctionProtoType::ExtProtoInfo ToEFI;
+  if (ToFPT)
+    ToEFI = ToFPT->getExtProtoInfo();
+
+  // Disallow any mismatch in variadic (EllipsisLoc is irrelevant)
+  if (ToEFI.Variadic != FromEFI.Variadic)
+    return false;
+  // Disallow any mismatch in trailing return
+  if (ToEFI.HasTrailingReturn != FromEFI.HasTrailingReturn)
+    return false;
+
+  // Allow any mismatch CFIUncheckedCallee
+
+  // C++ conv.fctptr allows to convert 'noexcept' to no exception specification,
+  // else exception specification must match up exactly.
+  if (FromFPT && FromFPT->isNothrow() && (!ToFPT || !ToFPT->hasExceptionSpec()))
+    ;
+  else {
+    if (ToEFI.ExceptionSpec.Type != FromEFI.ExceptionSpec.Type)
+      return false;
+    if (ToEFI.ExceptionSpec.Type == EST_Dynamic &&
+        ToEFI.ExceptionSpec.Exceptions != FromEFI.ExceptionSpec.Exceptions)
+        return false;
+    // FIXME: isComputedNoexcept(ToEFI.ExceptionSpec.Type) compare NoexceptExpr?
+    //        ToEFI.ExceptionSpec.Type == EST_Unevaluated  compare SourceDecl?
+  }
+
+  // Disallow any mismatch in method qualifiers or method ref qualifier
+  if (ToEFI.TypeQuals != FromEFI.TypeQuals ||
+      ToEFI.RefQualifier != FromEFI.RefQualifier)
+    return false;
+
+  // ParameterInfo
+  if (FromEFI.ExtParameterInfos || ToEFI.ExtParameterInfos) {
+    assert((FromFPT || ToFPT) && "ExtParameterInfo cannot appear out of nowhere");
+    unsigned NumParams = FromFPT ? FromFPT->getNumParams() : ToFPT->getNumParams();
+    for (unsigned I = 0; I < NumParams; ++I) {
+      FunctionProtoType::ExtParameterInfo FromParamI;
+      if (FromEFI.ExtParameterInfos)
+        FromParamI = FromEFI.ExtParameterInfos[I];
+      FunctionProtoType::ExtParameterInfo ToParamI;
+      if (ToEFI.ExtParameterInfos)
+        ToParamI = ToEFI.ExtParameterInfos[I];
+
+      // Disallow any mismatches in parameter info besides noescape
+      if (ToParamI.withIsNoEscape(false) != FromParamI.withIsNoEscape(false))
+        return false;
+
+      // Allow 'noescape' if present in source type.
+      if (ToParamI.isNoEscape() && !FromParamI.isNoEscape())
+        return false;
+    }
+  }
+
+  // Disallow any mismatch in extra attribute info or aarch64 SME attributes
+  if (ToEFI.ExtraAttributeInfo != FromEFI.ExtraAttributeInfo ||
+      ToEFI.AArch64SMEAttributes != FromEFI.AArch64SMEAttributes)
+    return false;
+
+  // Allow any mismatch in FunctionEffects
+
+  // Everything checks out
+  return true;
+}
+
 bool Sema::IsFunctionConversion(QualType FromType, QualType ToType) const {
   if (Context.hasSameUnqualifiedType(FromType, ToType))
     return false;
@@ -1933,86 +2036,26 @@ bool Sema::IsFunctionConversion(QualType FromType, QualType ToType) const {
   }
 
   const auto *FromFn = cast<FunctionType>(CanFrom);
-  FunctionType::ExtInfo FromEInfo = FromFn->getExtInfo();
-
   const auto *ToFn = cast<FunctionType>(CanTo);
-  FunctionType::ExtInfo ToEInfo = ToFn->getExtInfo();
 
-  bool Changed = false;
-
-  // Drop 'noreturn' if not present in target type.
-  if (FromEInfo.getNoReturn() && !ToEInfo.getNoReturn()) {
-    FromFn = Context.adjustFunctionType(FromFn, FromEInfo.withNoReturn(false));
-    Changed = true;
-  }
-
-  const auto *FromFPT = dyn_cast<FunctionProtoType>(FromFn);
-  const auto *ToFPT = dyn_cast<FunctionProtoType>(ToFn);
-
-  if (FromFPT && ToFPT) {
-    if (FromFPT->hasCFIUncheckedCallee() != ToFPT->hasCFIUncheckedCallee()) {
-      QualType NewTy = Context.getFunctionType(
-          FromFPT->getReturnType(), FromFPT->getParamTypes(),
-          FromFPT->getExtProtoInfo().withCFIUncheckedCallee(
-              ToFPT->hasCFIUncheckedCallee()));
-      FromFPT = cast<FunctionProtoType>(NewTy.getTypePtr());
-      FromFn = FromFPT;
-      Changed = true;
-    }
-  }
-
-  // Drop 'noexcept' if not present in target type.
-  if (FromFPT && ToFPT) {
-    if (FromFPT->isNothrow() && !ToFPT->isNothrow()) {
-      FromFn = cast<FunctionType>(
-          Context.getFunctionTypeWithExceptionSpec(QualType(FromFPT, 0),
-                                                   EST_None)
-                 .getTypePtr());
-      Changed = true;
-    }
-
-    // Convert FromFPT's ExtParameterInfo if necessary. The conversion is valid
-    // only if the ExtParameterInfo lists of the two function prototypes can be
-    // merged and the merged list is identical to ToFPT's ExtParameterInfo list.
-    SmallVector<FunctionProtoType::ExtParameterInfo, 4> NewParamInfos;
-    bool CanUseToFPT, CanUseFromFPT;
-    if (Context.mergeExtParameterInfo(ToFPT, FromFPT, CanUseToFPT,
-                                      CanUseFromFPT, NewParamInfos) &&
-        CanUseToFPT && !CanUseFromFPT) {
-      FunctionProtoType::ExtProtoInfo ExtInfo = FromFPT->getExtProtoInfo();
-      ExtInfo.ExtParameterInfos =
-          NewParamInfos.empty() ? nullptr : NewParamInfos.data();
-      QualType QT = Context.getFunctionType(FromFPT->getReturnType(),
-                                            FromFPT->getParamTypes(), ExtInfo);
-      FromFn = QT->getAs<FunctionType>();
-      Changed = true;
-    }
-
-    if (Context.hasAnyFunctionEffects()) {
-      FromFPT = cast<FunctionProtoType>(FromFn); // in case FromFn changed above
-
-      // Transparently add/drop effects; here we are concerned with
-      // language rules/canonicalization. Adding/dropping effects is a warning.
-      const auto FromFX = FromFPT->getFunctionEffects();
-      const auto ToFX = ToFPT->getFunctionEffects();
-      if (FromFX != ToFX) {
-        FunctionProtoType::ExtProtoInfo ExtInfo = FromFPT->getExtProtoInfo();
-        ExtInfo.FunctionEffects = ToFX;
-        QualType QT = Context.getFunctionType(
-            FromFPT->getReturnType(), FromFPT->getParamTypes(), ExtInfo);
-        FromFn = QT->getAs<FunctionType>();
-        Changed = true;
-      }
-    }
-  }
-
-  if (!Changed)
+  // Disallow any mismatch in return type
+  if (!Context.hasSameType(ToFn->getReturnType(), FromFn->getReturnType()))
     return false;
 
-  assert(QualType(FromFn, 0).isCanonical());
-  if (QualType(FromFn, 0) != CanTo) return false;
+  // Disallow any mismatch in argument types
+  if (TyClass == Type::FunctionProto) {
+    const auto *FromFPT = cast<FunctionProtoType>(FromFn);
+    const auto *ToFPT = cast<FunctionProtoType>(ToFn);
 
-  return true;
+    if (ToFPT->getNumParams() != FromFPT->getNumParams())
+      return false;
+    for (unsigned I = 0; I < ToFPT->getNumParams(); ++I)
+      if (!Context.hasSameType(ToFPT->getParamType(I), FromFPT->getParamType(I)))
+        return false;
+  }
+
+  // Allow only legal ExtInfo conversions
+  return IsLegalExtInfoConversion(FromFn, ToFn);
 }
 
 /// Determine whether the conversion from FromType to ToType is a valid
