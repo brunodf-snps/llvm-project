@@ -9173,39 +9173,8 @@ static AssignConvertType checkPointerTypesForAssignment(Sema &S,
   // hasSameType, so we can skip further checks.
   const auto *LFT = ltrans->getAs<FunctionType>();
   const auto *RFT = rtrans->getAs<FunctionType>();
-  if (!S.getLangOpts().CPlusPlus && LFT && RFT) {
-    // The invocation of IsFunctionConversion below will try to transform rtrans
-    // to obtain an exact match for ltrans. This should not fail because of
-    // mismatches in result type and parameter types, they were already checked
-    // by typesAreCompatible above. So we will recreate rtrans (or where
-    // appropriate ltrans) using the result type and parameter types from ltrans
-    // (respectively rtrans), but keeping its ExtInfo/ExtProtoInfo.
-    const auto *LFPT = dyn_cast<FunctionProtoType>(LFT);
-    const auto *RFPT = dyn_cast<FunctionProtoType>(RFT);
-    if (LFPT && RFPT) {
-      rtrans = S.Context.getFunctionType(LFPT->getReturnType(),
-                                         LFPT->getParamTypes(),
-                                         RFPT->getExtProtoInfo());
-    } else if (LFPT) {
-      FunctionProtoType::ExtProtoInfo EPI;
-      EPI.ExtInfo = RFT->getExtInfo();
-      rtrans = S.Context.getFunctionType(LFPT->getReturnType(),
-                                         LFPT->getParamTypes(), EPI);
-    } else if (RFPT) {
-      // In this case, we want to retain rtrans as a FunctionProtoType, to keep
-      // all of its ExtProtoInfo. Transform ltrans instead.
-      FunctionProtoType::ExtProtoInfo EPI;
-      EPI.ExtInfo = LFT->getExtInfo();
-      ltrans = S.Context.getFunctionType(RFPT->getReturnType(),
-                                         RFPT->getParamTypes(), EPI);
-    } else {
-      rtrans = S.Context.getFunctionNoProtoType(LFT->getReturnType(),
-                                                RFT->getExtInfo());
-    }
-    if (!S.Context.hasSameUnqualifiedType(rtrans, ltrans) &&
-        !S.IsFunctionConversion(rtrans, ltrans))
-      return AssignConvertType::IncompatibleFunctionPointer;
-  }
+  if (!S.getLangOpts().CPlusPlus && LFT && RFT && !S.IsLegalExtInfoConversion(RFT, LFT))
+    return AssignConvertType::IncompatibleFunctionPointer;
   return ConvTy;
 }
 

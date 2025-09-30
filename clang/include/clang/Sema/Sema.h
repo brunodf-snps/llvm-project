@@ -10207,6 +10207,8 @@ public:
   bool IsQualificationConversion(QualType FromType, QualType ToType,
                                  bool CStyle, bool &ObjCLifetimeConversion);
 
+  bool IsLegalExtInfoConversion(const FunctionType *FromFn, const FunctionType *ToFn) const;
+
   /// Determine whether the conversion from FromType to ToType is a valid
   /// conversion of ExtInfo/ExtProtoInfo on the nested function type.
   /// More precisely, this method checks whether FromType can be tranformed

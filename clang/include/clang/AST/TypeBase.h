@@ -4566,6 +4566,7 @@ public:
   // * FunctionNoProtoType::Profile
   // * FunctionProtoType::Profile
   // * TypePrinter::PrintFunctionProto
+  // * Sema::IsLegalExtInfoConversion
   // * AST read and write
   // * Codegen
   class ExtInfo {
