@@ -410,8 +410,7 @@ VPInstruction::VPInstruction(unsigned Opcode, ArrayRef<VPValue *> Operands,
       VPIRMetadata(MD), Opcode(Opcode), Name(Name.str()) {
   assert(flagsValidForOpcode(getOpcode()) &&
          "Set flags not supported for the provided opcode");
-  assert((getNumOperandsForOpcode(Opcode) == -1u ||
-          getNumOperandsForOpcode(Opcode) == getNumOperands()) &&
+  assert(isValidOperandCountForOpcode(Opcode, getNumOperands()) &&
          "number of operands does not match opcode");
 }
 
@@ -430,7 +429,6 @@ unsigned VPInstruction::getNumOperandsForOpcode(unsigned Opcode) {
   case Instruction::Alloca:
   case Instruction::ExtractValue:
   case Instruction::Freeze:
-  case Instruction::Load:
   case VPInstruction::BranchOnCond:
   case VPInstruction::Broadcast:
   case VPInstruction::BuildStructVector:
@@ -449,7 +447,6 @@ unsigned VPInstruction::getNumOperandsForOpcode(unsigned Opcode) {
   case Instruction::ICmp:
   case Instruction::FCmp:
   case Instruction::ExtractElement:
-  case Instruction::Store:
   case VPInstruction::BranchOnCount:
   case VPInstruction::BranchOnTwoConds:
   case VPInstruction::ComputeReductionResult:
@@ -468,7 +465,9 @@ unsigned VPInstruction::getNumOperandsForOpcode(unsigned Opcode) {
     return 4;
   case Instruction::Call:
   case Instruction::GetElementPtr:
+  case Instruction::Load:
   case Instruction::PHI:
+  case Instruction::Store:
   case Instruction::Switch:
   case VPInstruction::AnyOf:
   case VPInstruction::FirstActiveLane:
@@ -480,6 +479,19 @@ unsigned VPInstruction::getNumOperandsForOpcode(unsigned Opcode) {
     return -1u;
   }
   llvm_unreachable("all cases should be handled above");
+}
+
+bool VPInstruction::isValidOperandCountForOpcode(unsigned Opcode,
+                                                 unsigned NumOperands) {
+  // Load can have 1 or 2 operands, Store can have 2 or 3 operands
+  if (Opcode == Instruction::Load)
+    return (NumOperands == 1) || (NumOperands == 2);
+
+  if (Opcode == Instruction::Store)
+    return (NumOperands == 2) || (NumOperands == 3);
+
+  unsigned ExpectedOperands = getNumOperandsForOpcode(Opcode);
+  return (ExpectedOperands == -1u) || (ExpectedOperands == NumOperands);
 }
 #endif
 

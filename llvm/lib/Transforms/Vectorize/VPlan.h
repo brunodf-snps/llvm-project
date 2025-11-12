@@ -1155,6 +1155,11 @@ public:
   /// directly by the opcode.
   static unsigned getNumOperandsForOpcode(unsigned Opcode);
 
+  /// Validate if the number of operands is compatible with the given opcode.
+  /// Returns true if the number of operands is valid for the opcode.
+  static bool isValidOperandCountForOpcode(unsigned Opcode,
+                                           unsigned NumOperands);
+
 private:
   typedef unsigned char OpcodeTy;
   OpcodeTy Opcode;
