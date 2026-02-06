@@ -171,9 +171,11 @@ static bool analyzeGlobalAux(const Value *V, GlobalStatus &GS,
           return true;
         GS.StoredType = GlobalStatus::Stored;
       } else if (const auto *CB = dyn_cast<CallBase>(I)) {
-        if (CB->getIntrinsicID() == Intrinsic::threadlocal_address) {
+        if (CB->getIntrinsicID() == Intrinsic::threadlocal_address || CB->getIntrinsicID() == Intrinsic::noalias) {
           if (analyzeGlobalAux(I, GS, VisitedUsers))
             return true;
+        } else if (CB->getIntrinsicID() == Intrinsic::provenance_noalias) {
+          // Ignore uses on the provenance path.
         } else {
           if (!CB->isCallee(&U))
             return true;

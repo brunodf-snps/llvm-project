@@ -336,7 +336,7 @@ static bool CleanupConstantGlobalUsers(GlobalVariable *GV,
       if (getUnderlyingObject(MI->getRawDest()) == GV)
         EraseFromParent(MI);
     } else if (IntrinsicInst *II = dyn_cast<IntrinsicInst>(U)) {
-      if (II->getIntrinsicID() == Intrinsic::threadlocal_address)
+      if (II->getIntrinsicID() == Intrinsic::threadlocal_address || II->getIntrinsicID() == Intrinsic::noalias)
         append_range(WorkList, II->users());
     }
   }
