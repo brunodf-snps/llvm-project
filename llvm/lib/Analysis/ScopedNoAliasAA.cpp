@@ -214,7 +214,6 @@ ModRefInfo ScopedNoAliasAAResult::getModRefInfo(const CallBase *Call1,
   auto ME1 = getMemoryEffects(Call1, AAQI);
   SmallVector<const Value *, 8> Args1;
   if (ME1.onlyAccessesArgPointees()) {
-    SmallVector<const Value *, 8> Args1;
     for (const Value *Arg : Call1->args())
       if (Arg->getType()->isPointerTy())
         Args1.push_back(Arg);
@@ -222,7 +221,6 @@ ModRefInfo ScopedNoAliasAAResult::getModRefInfo(const CallBase *Call1,
   auto ME2 = getMemoryEffects(Call2, AAQI);
   SmallVector<const Value *, 8> Args2;
   if (ME2.onlyAccessesArgPointees()) {
-    SmallVector<const Value *, 8> Args2;
     for (const Value *Arg : Call2->args())
       if (Arg->getType()->isPointerTy())
         Args2.push_back(Arg);
