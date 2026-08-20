@@ -14,6 +14,7 @@
 #ifndef LLVM_ANALYSIS_VALUETRACKING_H
 #define LLVM_ANALYSIS_VALUETRACKING_H
 
+#include "llvm/ADT/STLFunctionalExtras.h"
 #include "llvm/Analysis/SimplifyQuery.h"
 #include "llvm/Analysis/WithCache.h"
 #include "llvm/IR/Constants.h"
@@ -449,11 +450,11 @@ LLVM_ABI bool isIntrinsicReturningPointerAliasingArgumentWithoutCapturing(
 LLVM_ABI const Value *getUnderlyingObject(
     const Value *V, unsigned MaxLookup = MaxLookupSearchDepth,
     bool FollowProvenance = false,
-    std::function<bool(const MDNode *)> NoAliasScopePred = nullptr);
+    function_ref<bool(const MDNode *)> NoAliasScopePred = nullptr);
 inline Value *getUnderlyingObject(
     Value *V, unsigned MaxLookup = MaxLookupSearchDepth,
     bool FollowProvenance = false,
-    std::function<bool(const MDNode *)> NoAliasScopePred = nullptr) {
+    function_ref<bool(const MDNode *)> NoAliasScopePred = nullptr) {
   // Force const to avoid infinite recursion.
   const Value *VConst = V;
   return const_cast<Value *>(getUnderlyingObject(
@@ -500,7 +501,7 @@ LLVM_ABI void getUnderlyingObjects(
     const Value *V, SmallVectorImpl<const Value *> &Objects,
     const LoopInfo *LI = nullptr, unsigned MaxLookup = MaxLookupSearchDepth,
     bool FollowProvenance = false,
-    std::function<bool(const MDNode *)> NoAliasScopePred = nullptr);
+    function_ref<bool(const MDNode *)> NoAliasScopePred = nullptr);
 
 /// This is a wrapper around getUnderlyingObjects and adds support for basic
 /// ptrtoint+arithmetic+inttoptr sequences.

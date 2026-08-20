@@ -6821,7 +6821,7 @@ static bool isSameUnderlyingObjectInLoop(const PHINode *PN,
 
 const Value *llvm::getUnderlyingObject(
     const Value *V, unsigned MaxLookup, bool FollowProvenance,
-    std::function<bool(const MDNode *)> NoAliasScopePred) {
+    function_ref<bool(const MDNode *)> NoAliasScopePred) {
   for (unsigned Count = 0; MaxLookup == 0 || Count < MaxLookup; ++Count) {
     if (auto *GEP = dyn_cast<GEPOperator>(V)) {
       const Value *PtrOp = GEP->getPointerOperand();
@@ -6897,7 +6897,7 @@ const Value *llvm::getUnderlyingObject(
 void llvm::getUnderlyingObjects(
     const Value *V, SmallVectorImpl<const Value *> &Objects, const LoopInfo *LI,
     unsigned MaxLookup, bool FollowProvenance,
-    std::function<bool(const MDNode *)> NoAliasScopePred) {
+    function_ref<bool(const MDNode *)> NoAliasScopePred) {
   SmallPtrSet<const Value *, 4> Visited;
   SmallVector<const Value *, 4> Worklist;
   Worklist.push_back(V);
